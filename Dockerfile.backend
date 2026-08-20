@@ -1,0 +1,21 @@
+# Multi-stage Docker build for Go Backend
+FROM golang:alpine AS builder
+WORKDIR /app
+
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend/ .
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/worker ./cmd/worker
+
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates tzdata
+
+WORKDIR /root/
+COPY --from=builder /app/api .
+COPY --from=builder /app/worker .
+
+EXPOSE 8080
+CMD ["./api"]
