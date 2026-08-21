@@ -9,6 +9,7 @@ import { StaffCounterPage } from './features/counter/StaffCounterPage';
 import { ReceptionPage } from './features/reception/ReceptionPage';
 import { PublicDisplayPage } from './features/display/PublicDisplayPage';
 import { PublicTicketPage } from './features/customer/PublicTicketPage';
+import { KioskPage } from './features/kiosk/KioskPage';
 import { BranchesPage } from './features/branches/BranchesPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { SuperAdminPage } from './features/superadmin/SuperAdminPage';
@@ -31,7 +32,9 @@ export const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register-org" element={<RegisterOrgPage />} />
           <Route path="/ticket/:publicToken" element={<PublicTicketPage />} />
+          <Route path="/kiosk/:branchId" element={<KioskPage />} />
           <Route path="/display" element={<PublicDisplayPage />} />
+
 
           {/* Protected Dashboard Routes */}
           <Route path="/" element={<DashboardLayout />}>

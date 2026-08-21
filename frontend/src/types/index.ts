@@ -55,7 +55,14 @@ export interface Branch {
   address?: string;
   phone?: string;
   status: string;
+  kiosk_enabled?: boolean;
+  kiosk_mode?: 'DUAL' | 'PAPERLESS' | 'PHYSICAL';
+  paper_size?: '58mm' | '80mm';
+  receipt_header?: string;
+  receipt_footer?: string;
+  auto_print?: boolean;
 }
+
 
 export interface Service {
   id: number;

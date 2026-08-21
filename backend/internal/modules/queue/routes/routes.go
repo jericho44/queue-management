@@ -8,8 +8,9 @@ import (
 )
 
 func RegisterQueueRoutes(router fiber.Router, queueController *controller.QueueController, jwtSvc *jwt.JWTService) {
-	// Public route for public tracking
+	// Public route for public tracking & public kiosk issuance
 	router.Get("/public/tickets/:publicToken", queueController.GetPublicTicket)
+	router.Post("/public/tickets", queueController.IssuePublicTicket)
 
 	// Protected routes
 	tickets := router.Group("/tickets", middleware.AuthMiddleware(jwtSvc))

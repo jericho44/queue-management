@@ -47,6 +47,11 @@ func (s *ServiceManagementService) ListServicesByBranch(ctx context.Context, org
 	return s.serviceRepo.ListByBranch(ctx, orgID, branchID)
 }
 
+func (s *ServiceManagementService) ListServicesByBranchPublic(ctx context.Context, branchID int64) ([]entity.Service, error) {
+	return s.serviceRepo.ListByBranchPublic(ctx, branchID)
+}
+
 func (s *ServiceManagementService) GetService(ctx context.Context, orgID, id int64) (*entity.Service, error) {
 	return s.serviceRepo.GetByID(ctx, orgID, id)
 }
+

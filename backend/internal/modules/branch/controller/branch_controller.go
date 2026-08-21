@@ -58,3 +58,38 @@ func (h *BranchController) GetBranch(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Branch details retrieved", branch)
 }
+
+func (h *BranchController) GetBranchPublic(c *fiber.Ctx) error {
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Invalid branch ID", nil)
+	}
+
+	branch, err := h.branchService.GetBranchPublic(c.Context(), id)
+	if err != nil {
+		return response.Error(c, fiber.StatusNotFound, "Branch not found", nil)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Branch details retrieved", branch)
+}
+
+func (h *BranchController) UpdateKioskSettings(c *fiber.Ctx) error {
+	orgID := c.Locals("organization_id").(int64)
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Invalid branch ID", nil)
+	}
+
+	var req dto.UpdateKioskSettingsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Invalid request payload", err.Error())
+	}
+
+	branch, err := h.branchService.UpdateKioskSettings(c.Context(), orgID, id, req)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Branch kiosk settings updated", branch)
+}
+

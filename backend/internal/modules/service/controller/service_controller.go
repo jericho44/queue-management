@@ -47,3 +47,18 @@ func (h *ServiceController) ListServicesByBranch(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Service list retrieved", services)
 }
+
+func (h *ServiceController) ListServicesByBranchPublic(c *fiber.Ctx) error {
+	branchID, err := strconv.ParseInt(c.Query("branch_id"), 10, 64)
+	if err != nil || branchID <= 0 {
+		return response.Error(c, fiber.StatusBadRequest, "Branch ID required", nil)
+	}
+
+	services, err := h.svcManagement.ListServicesByBranchPublic(c.Context(), branchID)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Service list retrieved", services)
+}
+

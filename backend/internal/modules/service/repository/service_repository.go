@@ -42,6 +42,47 @@ func (r *ServiceRepository) GetByID(ctx context.Context, orgID, id int64) (*enti
 	return s, nil
 }
 
+func (r *ServiceRepository) GetByIDPublic(ctx context.Context, id int64) (*entity.Service, error) {
+	query := `
+		SELECT s.id, s.uuid, s.organization_id, s.branch_id, b.name, s.name, s.code, s.prefix, s.avg_service_time_sec, s.priority_weight, s.status, s.created_at, s.updated_at
+		FROM services s
+		JOIN branches b ON s.branch_id = b.id
+		WHERE s.id = $1 AND s.deleted_at IS NULL
+	`
+	s := &entity.Service{}
+	err := r.db.QueryRowContext(ctx, query, id).
+		Scan(&s.ID, &s.UUID, &s.OrganizationID, &s.BranchID, &s.BranchName, &s.Name, &s.Code, &s.Prefix, &s.AvgServiceTimeSec, &s.PriorityWeight, &s.Status, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (r *ServiceRepository) ListByBranchPublic(ctx context.Context, branchID int64) ([]entity.Service, error) {
+	query := `
+		SELECT s.id, s.uuid, s.organization_id, s.branch_id, b.name, s.name, s.code, s.prefix, s.avg_service_time_sec, s.priority_weight, s.status, s.created_at, s.updated_at
+		FROM services s
+		JOIN branches b ON s.branch_id = b.id
+		WHERE s.branch_id = $1 AND s.deleted_at IS NULL AND s.status = 'ACTIVE'
+		ORDER BY s.prefix ASC, s.name ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, branchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var services []entity.Service
+	for rows.Next() {
+		var s entity.Service
+		if err := rows.Scan(&s.ID, &s.UUID, &s.OrganizationID, &s.BranchID, &s.BranchName, &s.Name, &s.Code, &s.Prefix, &s.AvgServiceTimeSec, &s.PriorityWeight, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		services = append(services, s)
+	}
+	return services, nil
+}
+
 func (r *ServiceRepository) ListByBranch(ctx context.Context, orgID, branchID int64) ([]entity.Service, error) {
 	query := `
 		SELECT s.id, s.uuid, s.organization_id, s.branch_id, b.name, s.name, s.code, s.prefix, s.avg_service_time_sec, s.priority_weight, s.status, s.created_at, s.updated_at
@@ -66,3 +107,4 @@ func (r *ServiceRepository) ListByBranch(ctx context.Context, orgID, branchID in
 	}
 	return services, nil
 }
+

@@ -8,9 +8,12 @@ import (
 )
 
 func RegisterBranchRoutes(router fiber.Router, branchController *controller.BranchController, jwtSvc *jwt.JWTService) {
+	router.Get("/public/branches/:id", branchController.GetBranchPublic)
+
 	branches := router.Group("/branches", middleware.AuthMiddleware(jwtSvc))
 
 	branches.Post("/", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER"), branchController.CreateBranch)
 	branches.Get("/", branchController.ListBranches)
 	branches.Get("/:id", branchController.GetBranch)
+	branches.Put("/:id/kiosk-settings", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER"), branchController.UpdateKioskSettings)
 }

@@ -8,6 +8,8 @@ import (
 )
 
 func RegisterServiceRoutes(router fiber.Router, serviceController *controller.ServiceController, jwtSvc *jwt.JWTService) {
+	router.Get("/public/services", serviceController.ListServicesByBranchPublic)
+
 	servicesGroup := router.Group("/services", middleware.AuthMiddleware(jwtSvc))
 
 	servicesGroup.Post("/", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER"), serviceController.CreateService)

@@ -56,6 +56,34 @@ func (s *QueueService) IssueTicket(ctx context.Context, orgID int64, req dto.Iss
 	return ticket, nil
 }
 
+func (s *QueueService) IssuePublicTicket(ctx context.Context, req dto.IssueTicketRequest) (*queueEntity.QueueTicket, error) {
+	svc, err := s.serviceRepo.GetByIDPublic(ctx, req.ServiceID)
+	if err != nil {
+		return nil, fmt.Errorf("service not found: %w", err)
+	}
+
+	priority := req.Priority
+	if priority != "EMERGENCY" && priority != "PRIORITY" {
+		priority = "NORMAL"
+	}
+
+	ticket, err := s.queueRepo.IssueTicketTx(ctx, svc.OrganizationID, req.BranchID, req.ServiceID, sql.NullInt64{Valid: false}, priority, svc.Prefix, svc.AvgServiceTimeSec)
+	if err != nil {
+		return nil, err
+	}
+
+	ticket.ServiceName = svc.Name
+	ticket.ServicePrefix = svc.Prefix
+
+	channel := fmt.Sprintf("org:%d:branch:%d", svc.OrganizationID, req.BranchID)
+	if s.wsHub != nil {
+		s.wsHub.BroadcastToChannel(channel, "QUEUE_TICKET_CREATED", ticket)
+	}
+
+	return ticket, nil
+}
+
+
 func (s *QueueService) CallNext(ctx context.Context, orgID, counterID, staffID int64) (*queueEntity.QueueTicket, error) {
 	counter, err := s.counterRepo.GetByID(ctx, orgID, counterID)
 	if err != nil {

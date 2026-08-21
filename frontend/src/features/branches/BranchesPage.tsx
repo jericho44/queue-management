@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { fetchApi } from '../../api/client';
 import { Branch, Service, Counter } from '../../types';
-import { Building, Plus, Layers, Kanban, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Building, Plus, Layers, Kanban, CheckCircle, ShieldAlert, Printer, Settings2 } from 'lucide-react';
+import { KioskSettingsModal } from './KioskSettingsModal';
 
 export const BranchesPage: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [counters, setCounters] = useState<Counter[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number>(0);
+  const [showKioskModal, setShowKioskModal] = useState(false);
 
   // New Branch Form State
   const [newBranchName, setNewBranchName] = useState('');
@@ -20,6 +22,8 @@ export const BranchesPage: React.FC = () => {
   // New Counter Form State
   const [newCounterNum, setNewCounterNum] = useState('');
   const [newCounterName, setNewCounterName] = useState('');
+
+  const selectedBranch = branches.find((b) => b.id === selectedBranchId);
 
   useEffect(() => {
     fetchBranches();
@@ -42,6 +46,7 @@ export const BranchesPage: React.FC = () => {
       console.error(err);
     }
   };
+
 
   const fetchBranchData = async (bId: number) => {
     try {
@@ -118,7 +123,26 @@ export const BranchesPage: React.FC = () => {
           <h1 className="text-2xl font-black text-white">Branch & Counter Management</h1>
           <p className="text-xs text-slate-400 mt-1">Configure multi-tenant locations, services, and counter assignments</p>
         </div>
+
+        {selectedBranch && (
+          <button
+            onClick={() => setShowKioskModal(true)}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-blue-400 hover:text-blue-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-lg"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Kiosk & Printer Settings</span>
+          </button>
+        )}
       </div>
+
+      {showKioskModal && selectedBranch && (
+        <KioskSettingsModal
+          branch={selectedBranch}
+          onClose={() => setShowKioskModal(false)}
+          onSaveSuccess={fetchBranches}
+        />
+      )}
+
 
       {/* Branch Selector */}
       <div className="flex items-center space-x-3 overflow-x-auto pb-2">

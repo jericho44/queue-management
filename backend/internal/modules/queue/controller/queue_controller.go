@@ -33,6 +33,21 @@ func (h *QueueController) IssueTicket(c *fiber.Ctx) error {
 	return response.Success(c, fiber.StatusCreated, "Ticket issued successfully", ticket)
 }
 
+func (h *QueueController) IssuePublicTicket(c *fiber.Ctx) error {
+	var req dto.IssueTicketRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Invalid request payload", err.Error())
+	}
+
+	ticket, err := h.queueService.IssuePublicTicket(c.Context(), req)
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	return response.Success(c, fiber.StatusCreated, "Ticket issued successfully", ticket)
+}
+
+
 func (h *QueueController) CallNext(c *fiber.Ctx) error {
 	orgID := c.Locals("organization_id").(int64)
 	staffID := c.Locals("user_id").(int64)
