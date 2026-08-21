@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lib/pq"
 	"queue-management-tenant/backend/internal/modules/queue/entity"
 )
+
 
 type QueueRepository struct {
 	db *sql.DB
@@ -138,7 +140,8 @@ func (r *QueueRepository) CallNextTx(ctx context.Context, orgID, branchID, count
 		LIMIT 1
 	`
 	var ticketID int64
-	err = tx.QueryRowContext(ctx, query, orgID, branchID, serviceIDs, today).Scan(&ticketID)
+	err = tx.QueryRowContext(ctx, query, orgID, branchID, pq.Array(serviceIDs), today).Scan(&ticketID)
+
 	if err != nil {
 		return nil, err
 	}

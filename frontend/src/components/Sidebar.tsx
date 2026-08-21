@@ -10,6 +10,8 @@ import {
   FileText,
   Users,
   ShieldAlert,
+  CreditCard,
+  DollarSign,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -20,11 +22,14 @@ export const Sidebar: React.FC = () => {
   const links = [
     { to: '/', label: 'Overview', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'STAFF', 'RECEPTIONIST'] },
     { to: '/superadmin', label: 'Super Admin Console', icon: ShieldAlert, roles: ['SUPER_ADMIN'] },
+    { to: '/superadmin/billing', label: 'SaaS Revenue & Billing', icon: DollarSign, roles: ['SUPER_ADMIN'] },
     { to: '/counter', label: 'Counter Station', icon: Kanban, roles: ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'STAFF'] },
     { to: '/reception', label: 'Ticket Reception', icon: TicketPlus, roles: ['SUPER_ADMIN', 'OWNER', 'MANAGER', 'RECEPTIONIST'] },
     { to: '/branches', label: 'Branches & Counters', icon: Building, roles: ['SUPER_ADMIN', 'OWNER', 'MANAGER'] },
+    { to: '/billing', label: 'Billing & Invoices', icon: CreditCard, roles: ['SUPER_ADMIN', 'OWNER', 'MANAGER'] },
     { to: '/reports', label: 'Analytics & Audit', icon: FileText, roles: ['SUPER_ADMIN', 'OWNER', 'MANAGER'] },
   ];
+
 
   return (
     <aside className="w-64 bg-slate-900/60 border-r border-slate-800 p-4 flex flex-col justify-between hidden md:flex">

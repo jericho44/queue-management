@@ -60,18 +60,19 @@ func (h *BranchController) GetBranch(c *fiber.Ctx) error {
 }
 
 func (h *BranchController) GetBranchPublic(c *fiber.Ctx) error {
-	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
-	if err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "Invalid branch ID", nil)
+	identifier := c.Params("identifier")
+	if identifier == "" {
+		identifier = c.Params("id")
 	}
 
-	branch, err := h.branchService.GetBranchPublic(c.Context(), id)
+	branch, err := h.branchService.GetBranchPublic(c.Context(), identifier)
 	if err != nil {
 		return response.Error(c, fiber.StatusNotFound, "Branch not found", nil)
 	}
 
 	return response.Success(c, fiber.StatusOK, "Branch details retrieved", branch)
 }
+
 
 func (h *BranchController) UpdateKioskSettings(c *fiber.Ctx) error {
 	orgID := c.Locals("organization_id").(int64)

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
+	billingRepo "queue-management-tenant/backend/internal/modules/billing/repository"
 	counterRepo "queue-management-tenant/backend/internal/modules/counter/repository"
 	"queue-management-tenant/backend/internal/modules/queue/dto"
 	queueEntity "queue-management-tenant/backend/internal/modules/queue/entity"
@@ -17,14 +19,16 @@ type QueueService struct {
 	queueRepo   *queueRepo.QueueRepository
 	serviceRepo *serviceRepo.ServiceRepository
 	counterRepo *counterRepo.CounterRepository
+	billingRepo *billingRepo.BillingRepository
 	wsHub       *websocket.WSHub
 }
 
-func NewQueueService(queueRepo *queueRepo.QueueRepository, serviceRepo *serviceRepo.ServiceRepository, counterRepo *counterRepo.CounterRepository, wsHub *websocket.WSHub) *QueueService {
+func NewQueueService(queueRepo *queueRepo.QueueRepository, serviceRepo *serviceRepo.ServiceRepository, counterRepo *counterRepo.CounterRepository, billingRepo *billingRepo.BillingRepository, wsHub *websocket.WSHub) *QueueService {
 	return &QueueService{
 		queueRepo:   queueRepo,
 		serviceRepo: serviceRepo,
 		counterRepo: counterRepo,
+		billingRepo: billingRepo,
 		wsHub:       wsHub,
 	}
 }
@@ -47,6 +51,11 @@ func (s *QueueService) IssueTicket(ctx context.Context, orgID int64, req dto.Iss
 
 	ticket.ServiceName = svc.Name
 	ticket.ServicePrefix = svc.Prefix
+
+	// Track ticket in billing meter
+	if s.billingRepo != nil {
+		_ = s.billingRepo.IncrementTicketMeter(ctx, orgID, time.Now().Format("2006-01"))
+	}
 
 	channel := fmt.Sprintf("org:%d:branch:%d", orgID, req.BranchID)
 	if s.wsHub != nil {
@@ -75,6 +84,11 @@ func (s *QueueService) IssuePublicTicket(ctx context.Context, req dto.IssueTicke
 	ticket.ServiceName = svc.Name
 	ticket.ServicePrefix = svc.Prefix
 
+	// Track ticket in billing meter
+	if s.billingRepo != nil {
+		_ = s.billingRepo.IncrementTicketMeter(ctx, svc.OrganizationID, time.Now().Format("2006-01"))
+	}
+
 	channel := fmt.Sprintf("org:%d:branch:%d", svc.OrganizationID, req.BranchID)
 	if s.wsHub != nil {
 		s.wsHub.BroadcastToChannel(channel, "QUEUE_TICKET_CREATED", ticket)
@@ -82,6 +96,7 @@ func (s *QueueService) IssuePublicTicket(ctx context.Context, req dto.IssueTicke
 
 	return ticket, nil
 }
+
 
 
 func (s *QueueService) CallNext(ctx context.Context, orgID, counterID, staffID int64) (*queueEntity.QueueTicket, error) {

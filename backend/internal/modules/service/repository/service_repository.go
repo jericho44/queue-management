@@ -58,19 +58,21 @@ func (r *ServiceRepository) GetByIDPublic(ctx context.Context, id int64) (*entit
 	return s, nil
 }
 
-func (r *ServiceRepository) ListByBranchPublic(ctx context.Context, branchID int64) ([]entity.Service, error) {
+func (r *ServiceRepository) ListByBranchPublic(ctx context.Context, branchIdentifier string) ([]entity.Service, error) {
 	query := `
 		SELECT s.id, s.uuid, s.organization_id, s.branch_id, b.name, s.name, s.code, s.prefix, s.avg_service_time_sec, s.priority_weight, s.status, s.created_at, s.updated_at
 		FROM services s
 		JOIN branches b ON s.branch_id = b.id
-		WHERE s.branch_id = $1 AND s.deleted_at IS NULL AND s.status = 'ACTIVE'
+		WHERE (CAST(b.id AS TEXT) = $1 OR LOWER(b.code) = LOWER($1) OR LOWER(REPLACE(b.name, ' ', '-')) = LOWER($1))
+		  AND s.deleted_at IS NULL AND s.status = 'ACTIVE'
 		ORDER BY s.prefix ASC, s.name ASC
 	`
-	rows, err := r.db.QueryContext(ctx, query, branchID)
+	rows, err := r.db.QueryContext(ctx, query, branchIdentifier)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 
 	var services []entity.Service
 	for rows.Next() {

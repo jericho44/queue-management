@@ -3,6 +3,8 @@ import { Branch } from '../../types';
 import { fetchApi } from '../../api/client';
 import { X, Printer, Settings2, Sliders, Check } from 'lucide-react';
 
+import { useToast } from '../../components/Toast';
+
 interface KioskSettingsModalProps {
   branch: Branch;
   onClose: () => void;
@@ -14,6 +16,7 @@ export const KioskSettingsModal: React.FC<KioskSettingsModalProps> = ({
   onClose,
   onSaveSuccess,
 }) => {
+  const { showError, showSuccess } = useToast();
   const [kioskEnabled, setKioskEnabled] = useState(branch.kiosk_enabled ?? true);
   const [kioskMode, setKioskMode] = useState<'DUAL' | 'PAPERLESS' | 'PHYSICAL'>(
     branch.kiosk_mode || 'DUAL'
@@ -41,14 +44,16 @@ export const KioskSettingsModal: React.FC<KioskSettingsModalProps> = ({
           auto_print: autoPrint,
         }),
       });
+      showSuccess('Pengaturan Kiosk & Thermal Printer berhasil disimpan');
       onSaveSuccess();
       onClose();
     } catch (err: any) {
-      alert(err.message || 'Gagal memperbarui pengaturan Kiosk & Thermal Printer');
+      showError(err.message || 'Gagal memperbarui pengaturan Kiosk & Thermal Printer');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -77,7 +82,8 @@ export const KioskSettingsModal: React.FC<KioskSettingsModalProps> = ({
           <div className="flex items-center justify-between p-4 bg-slate-800/60 rounded-2xl border border-slate-700/70">
             <div>
               <div className="text-xs font-bold text-white">Aktifkan Terminal Kiosk</div>
-              <div className="text-[11px] text-slate-400">Izinkan publik mengakses URL Kiosk cabang ini (`/kiosk/${branch.id}`)</div>
+              <div className="text-[11px] text-slate-400">Izinkan publik mengakses URL Kiosk cabang ini (`/kiosk/${branch.code.toLowerCase()}`)</div>
+
             </div>
             <input
               type="checkbox"

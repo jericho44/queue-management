@@ -37,7 +37,11 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ ticket, branch }
 
         {/* Branch Name */}
         <div className="text-sm font-black uppercase leading-tight">{branch.name}</div>
-        <div className="text-[9px] uppercase">{branch.address || branch.code}</div>
+        <div className="text-[9px] uppercase">
+          {typeof branch.address === 'string' ? (branch.address || branch.code) : (branch.address as any)?.String || branch.code}
+        </div>
+
+
 
         <div className="border-t border-b border-dashed border-black py-1">
           <div className="text-[10px] font-bold uppercase">LAYANAN: {ticket.service_name}</div>

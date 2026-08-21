@@ -11,8 +11,8 @@ type Branch struct {
 	OrganizationID int64        `json:"organization_id"`
 	Name           string       `json:"name"`
 	Code           string       `json:"code"`
-	Address        sql.NullString `json:"address,omitempty"`
-	Phone          sql.NullString `json:"phone,omitempty"`
+	Address        string       `json:"address"`
+	Phone          string       `json:"phone"`
 	Status         string       `json:"status"`
 	KioskEnabled  bool         `json:"kiosk_enabled"`
 	KioskMode     string       `json:"kiosk_mode"`

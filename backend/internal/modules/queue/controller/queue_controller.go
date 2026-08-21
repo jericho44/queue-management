@@ -169,3 +169,19 @@ func (h *QueueController) ListBranchTickets(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Queue list retrieved", tickets)
 }
+
+func (h *QueueController) ListWaitingTickets(c *fiber.Ctx) error {
+	orgID := c.Locals("organization_id").(int64)
+	branchID, err := strconv.ParseInt(c.Query("branch_id"), 10, 64)
+	if err != nil || branchID <= 0 {
+		return response.Error(c, fiber.StatusBadRequest, "Branch ID required", nil)
+	}
+
+	tickets, err := h.queueService.ListBranchTickets(c.Context(), orgID, branchID, "WAITING")
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Waiting queue list retrieved", tickets)
+}
+

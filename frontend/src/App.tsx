@@ -13,6 +13,10 @@ import { KioskPage } from './features/kiosk/KioskPage';
 import { BranchesPage } from './features/branches/BranchesPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { SuperAdminPage } from './features/superadmin/SuperAdminPage';
+import { BillingPortalPage } from './features/billing/BillingPortalPage';
+import { SuperadminBillingPage } from './features/billing/SuperadminBillingPage';
+
+import { ToastProvider } from './components/Toast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,29 +30,33 @@ const queryClient = new QueryClient({
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Authentication & Customer Pages */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register-org" element={<RegisterOrgPage />} />
-          <Route path="/ticket/:publicToken" element={<PublicTicketPage />} />
-          <Route path="/kiosk/:branchId" element={<KioskPage />} />
-          <Route path="/display" element={<PublicDisplayPage />} />
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Authentication & Customer Pages */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register-org" element={<RegisterOrgPage />} />
+            <Route path="/ticket/:publicToken" element={<PublicTicketPage />} />
+            <Route path="/kiosk/:branchId" element={<KioskPage />} />
+            <Route path="/display" element={<PublicDisplayPage />} />
 
+            {/* Protected Dashboard Routes */}
+            <Route path="/" element={<DashboardLayout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="superadmin" element={<SuperAdminPage />} />
+              <Route path="superadmin/billing" element={<SuperadminBillingPage />} />
+              <Route path="counter" element={<StaffCounterPage />} />
+              <Route path="reception" element={<ReceptionPage />} />
+              <Route path="branches" element={<BranchesPage />} />
+              <Route path="billing" element={<BillingPortalPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+            </Route>
 
-          {/* Protected Dashboard Routes */}
-          <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="superadmin" element={<SuperAdminPage />} />
-            <Route path="counter" element={<StaffCounterPage />} />
-            <Route path="reception" element={<ReceptionPage />} />
-            <Route path="branches" element={<BranchesPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-          </Route>
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 };
+

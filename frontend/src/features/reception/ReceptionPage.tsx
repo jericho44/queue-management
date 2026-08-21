@@ -4,8 +4,12 @@ import { Branch, Service, QueueTicket } from '../../types';
 import { TicketPlus, Printer, QrCode, CheckCircle2, User, Phone, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { useToast } from '../../components/Toast';
+
 export const ReceptionPage: React.FC = () => {
+  const { showError, showSuccess } = useToast();
   const [branches, setBranches] = useState<Branch[]>([]);
+
   const [services, setServices] = useState<Service[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number>(0);
   const [selectedServiceId, setSelectedServiceId] = useState<number>(0);
@@ -67,14 +71,16 @@ export const ReceptionPage: React.FC = () => {
       });
 
       setIssuedTicket(res.data);
+      showSuccess(`Tiket ${res.data.ticket_number} Berhasil Diterbitkan`);
       setCustomerName('');
       setCustomerPhone('');
     } catch (err: any) {
-      alert(err.message || 'Failed to issue ticket');
+      showError(err.message || 'Gagal menerbitkan tiket antrean');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

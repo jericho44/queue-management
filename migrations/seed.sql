@@ -45,3 +45,10 @@ ON CONFLICT DO NOTHING;
 INSERT INTO counter_services (counter_id, service_id)
 VALUES (1, 1), (1, 2), (2, 2), (3, 3)
 ON CONFLICT DO NOTHING;
+
+-- Reset Auto-Increment Sequences to prevent primary key collision
+SELECT setval(pg_get_serial_sequence('organizations', 'id'), COALESCE((SELECT MAX(id) FROM organizations), 1));
+SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1));
+SELECT setval(pg_get_serial_sequence('branches', 'id'), COALESCE((SELECT MAX(id) FROM branches), 1));
+SELECT setval(pg_get_serial_sequence('services', 'id'), COALESCE((SELECT MAX(id) FROM services), 1));
+SELECT setval(pg_get_serial_sequence('counters', 'id'), COALESCE((SELECT MAX(id) FROM counters), 1));

@@ -3,8 +3,10 @@ import { fetchApi } from '../../api/client';
 import { Branch, Service, Counter } from '../../types';
 import { Building, Plus, Layers, Kanban, CheckCircle, ShieldAlert, Printer, Settings2 } from 'lucide-react';
 import { KioskSettingsModal } from './KioskSettingsModal';
+import { useToast } from '../../components/Toast';
 
 export const BranchesPage: React.FC = () => {
+  const { showError, showSuccess } = useToast();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [counters, setCounters] = useState<Counter[]>([]);
@@ -39,23 +41,24 @@ export const BranchesPage: React.FC = () => {
     try {
       const res = await fetchApi<Branch[]>('/branches');
       setBranches(res.data || []);
-      if (res.data && res.data.length > 0) {
+      if (res.data && res.data.length > 0 && selectedBranchId === 0) {
         setSelectedBranchId(res.data[0].id);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showError(err.message || 'Gagal memuat daftar cabang');
     }
   };
 
-
-  const fetchBranchData = async (bId: number) => {
+  const fetchBranchData = async (branchId: number) => {
     try {
-      const sRes = await fetchApi<Service[]>(`/services?branch_id=${bId}`);
-      const cRes = await fetchApi<Counter[]>(`/counters?branch_id=${bId}`);
+      const [sRes, cRes] = await Promise.all([
+        fetchApi<Service[]>(`/services?branch_id=${branchId}`),
+        fetchApi<Counter[]>(`/counters?branch_id=${branchId}`),
+      ]);
       setServices(sRes.data || []);
       setCounters(cRes.data || []);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showError(err.message || 'Gagal memuat detail cabang');
     }
   };
 
@@ -66,11 +69,12 @@ export const BranchesPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ name: newBranchName, code: newBranchCode }),
       });
+      showSuccess(`Cabang "${newBranchName}" berhasil dibuat`);
       setNewBranchName('');
       setNewBranchCode('');
       fetchBranches();
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal membuat cabang baru');
     }
   };
 
@@ -87,10 +91,11 @@ export const BranchesPage: React.FC = () => {
           prefix: newServicePrefix,
         }),
       });
+      showSuccess(`Layanan "${newServiceName}" berhasil ditambahkan`);
       setNewServiceName('');
       fetchBranchData(selectedBranchId);
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal menambahkan layanan');
     }
   };
 
@@ -108,11 +113,12 @@ export const BranchesPage: React.FC = () => {
           service_ids: serviceIDs,
         }),
       });
+      showSuccess(`Loket "${newCounterName}" berhasil dibuat`);
       setNewCounterNum('');
       setNewCounterName('');
       fetchBranchData(selectedBranchId);
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal membuat loket');
     }
   };
 

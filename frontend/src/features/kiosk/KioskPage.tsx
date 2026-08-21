@@ -19,8 +19,12 @@ import {
   Zap,
 } from 'lucide-react';
 
+import { useToast } from '../../components/Toast';
+
 export const KioskPage: React.FC = () => {
-  const { branchId } = useParams<{ branchId: string }>();
+  const { showError, showSuccess } = useToast();
+  const { branchId: branchIdentifier } = useParams<{ branchId: string }>();
+
   const [branch, setBranch] = useState<Branch | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,10 +43,10 @@ export const KioskPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (branchId) {
-      loadKioskData(Number(branchId));
+    if (branchIdentifier) {
+      loadKioskData(branchIdentifier);
     }
-  }, [branchId]);
+  }, [branchIdentifier]);
 
   // Auto reset countdown timer when ticket modal is open
   useEffect(() => {
@@ -59,17 +63,18 @@ export const KioskPage: React.FC = () => {
     };
   }, [modalStep, countdown]);
 
-  const loadKioskData = async (bId: number) => {
+  const loadKioskData = async (bIdentifier: string) => {
     setLoading(true);
     try {
       const [branchRes, servicesRes] = await Promise.all([
-        fetchApi<Branch>(`/public/branches/${bId}`),
-        fetchApi<Service[]>(`/public/services?branch_id=${bId}`),
+        fetchApi<Branch>(`/public/branches/${bIdentifier}`),
+        fetchApi<Service[]>(`/public/services?branch_id=${bIdentifier}`),
       ]);
       setBranch(branchRes.data);
       setServices(servicesRes.data || []);
-    } catch (err) {
-      console.error('Failed to load kiosk data:', err);
+    } catch (err: any) {
+      console.error(err);
+      showError('Gagal memuat data cabang kiosk');
     } finally {
       setLoading(false);
     }
@@ -83,21 +88,23 @@ export const KioskPage: React.FC = () => {
   };
 
   const handleSelectService = async (service: Service) => {
-    if (!branchId || issuingServiceId) return;
+    if (!branchIdentifier || issuingServiceId) return;
 
     setIssuingServiceId(service.id);
     try {
       const res = await fetchApi<QueueTicket>('/public/tickets', {
         method: 'POST',
         body: JSON.stringify({
-          branch_id: Number(branchId),
+          branch_id: branch?.id || service.branch_id,
           service_id: service.id,
           priority: 'NORMAL',
         }),
       });
 
+
       const ticket = res.data;
       setIssuedTicket(ticket);
+      showSuccess(`Nomor Antrean ${ticket.ticket_number} Berhasil Dibuat!`, 'Antrean Terbit');
 
       const mode = branch?.kiosk_mode || 'DUAL';
 
@@ -111,11 +118,13 @@ export const KioskPage: React.FC = () => {
       }
       setCountdown(12);
     } catch (err: any) {
-      alert(err.message || 'Gagal membuat tiket antrean');
+      showError(err.message || 'Gagal membuat tiket antrean');
     } finally {
       setIssuingServiceId(null);
     }
   };
+
+
 
   const executePhysicalPrint = async (ticket: QueueTicket) => {
     setModalStep('PHYSICAL_PRINTING');

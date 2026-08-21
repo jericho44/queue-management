@@ -29,7 +29,7 @@ func (r *BranchRepository) Create(ctx context.Context, b *entity.Branch) error {
 
 func (r *BranchRepository) GetByID(ctx context.Context, orgID, id int64) (*entity.Branch, error) {
 	query := `
-		SELECT id, uuid, organization_id, name, code, address, phone, status,
+		SELECT id, uuid, organization_id, name, code, COALESCE(address, ''), COALESCE(phone, ''), status,
 		       kiosk_enabled, kiosk_mode, paper_size, receipt_header, receipt_footer, auto_print,
 		       created_at, updated_at
 		FROM branches WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
@@ -45,15 +45,17 @@ func (r *BranchRepository) GetByID(ctx context.Context, orgID, id int64) (*entit
 	return b, nil
 }
 
-func (r *BranchRepository) GetByIDPublic(ctx context.Context, id int64) (*entity.Branch, error) {
+func (r *BranchRepository) GetByIDPublic(ctx context.Context, identifier string) (*entity.Branch, error) {
 	query := `
-		SELECT id, uuid, organization_id, name, code, address, phone, status,
+		SELECT id, uuid, organization_id, name, code, COALESCE(address, ''), COALESCE(phone, ''), status,
 		       kiosk_enabled, kiosk_mode, paper_size, receipt_header, receipt_footer, auto_print,
 		       created_at, updated_at
-		FROM branches WHERE id = $1 AND deleted_at IS NULL
+		FROM branches
+		WHERE (CAST(id AS TEXT) = $1 OR LOWER(code) = LOWER($1) OR LOWER(REPLACE(name, ' ', '-')) = LOWER($1)) AND deleted_at IS NULL
+		LIMIT 1
 	`
 	b := &entity.Branch{}
-	err := r.db.QueryRowContext(ctx, query, id).
+	err := r.db.QueryRowContext(ctx, query, identifier).
 		Scan(&b.ID, &b.UUID, &b.OrganizationID, &b.Name, &b.Code, &b.Address, &b.Phone, &b.Status,
 			&b.KioskEnabled, &b.KioskMode, &b.PaperSize, &b.ReceiptHeader, &b.ReceiptFooter, &b.AutoPrint,
 			&b.CreatedAt, &b.UpdatedAt)
@@ -65,7 +67,7 @@ func (r *BranchRepository) GetByIDPublic(ctx context.Context, id int64) (*entity
 
 func (r *BranchRepository) ListByOrg(ctx context.Context, orgID int64) ([]entity.Branch, error) {
 	query := `
-		SELECT id, uuid, organization_id, name, code, address, phone, status,
+		SELECT id, uuid, organization_id, name, code, COALESCE(address, ''), COALESCE(phone, ''), status,
 		       kiosk_enabled, kiosk_mode, paper_size, receipt_header, receipt_footer, auto_print,
 		       created_at, updated_at
 		FROM branches WHERE organization_id = $1 AND deleted_at IS NULL
@@ -109,4 +111,3 @@ func (r *BranchRepository) CountByOrg(ctx context.Context, orgID int64) (int, er
 	err := r.db.QueryRowContext(ctx, query, orgID).Scan(&count)
 	return count, err
 }
-

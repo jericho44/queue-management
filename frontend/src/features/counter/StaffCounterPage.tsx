@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchApi } from '../../api/client';
 import { Counter, QueueTicket, Branch, Service } from '../../types';
+import { Link } from 'react-router-dom';
 import {
   Volume2,
   CheckCircle2,
@@ -13,9 +14,17 @@ import {
   Power,
   Clock,
   Sparkles,
+  AlertTriangle,
+  Building2,
+  ChevronDown,
+  Monitor,
 } from 'lucide-react';
 
+
+import { useToast } from '../../components/Toast';
+
 export const StaffCounterPage: React.FC = () => {
+  const { showError, showSuccess, showInfo, showWarning } = useToast();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [counters, setCounters] = useState<Counter[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number>(0);
@@ -42,25 +51,29 @@ export const StaffCounterPage: React.FC = () => {
   const fetchBranches = async () => {
     try {
       const res = await fetchApi<Branch[]>('/branches');
+      setBranches(res.data || []);
       if (res.data && res.data.length > 0) {
-        setBranches(res.data);
         setSelectedBranchId(res.data[0].id);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showError(err.message || 'Gagal memuat cabang');
     }
   };
 
   const fetchCounters = async (bId: number) => {
     try {
       const res = await fetchApi<Counter[]>(`/counters?branch_id=${bId}`);
-      setCounters(res.data || []);
-      if (res.data && res.data.length > 0) {
-        setSelectedCounterId(res.data[0].id);
-        setActiveCounter(res.data[0]);
+      const counterList = res.data || [];
+      setCounters(counterList);
+      if (counterList.length > 0) {
+        setSelectedCounterId(counterList[0].id);
+        setActiveCounter(counterList[0]);
+      } else {
+        setSelectedCounterId(0);
+        setActiveCounter(null);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showError(err.message || 'Gagal memuat loket');
     }
   };
 
@@ -68,17 +81,17 @@ export const StaffCounterPage: React.FC = () => {
     try {
       const res = await fetchApi<Service[]>(`/services?branch_id=${bId}`);
       setServices(res.data || []);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      showError(err.message || 'Gagal memuat layanan');
     }
   };
 
   const fetchWaitingQueue = async () => {
     if (!selectedBranchId) return;
     try {
-      const res = await fetchApi<QueueTicket[]>(`/tickets?branch_id=${selectedBranchId}&status=WAITING`);
+      const res = await fetchApi<QueueTicket[]>(`/tickets/waiting?branch_id=${selectedBranchId}`);
       setWaitingTickets(res.data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
     }
   };
@@ -90,13 +103,17 @@ export const StaffCounterPage: React.FC = () => {
   }, [selectedBranchId]);
 
   const handleOpenCounter = async () => {
-    if (!selectedCounterId) return;
+    if (!selectedCounterId) {
+      showWarning('Silakan buat Loket terlebih dahulu di menu Branches & Counters');
+      return;
+    }
     try {
       await fetchApi(`/counters/${selectedCounterId}/open`, { method: 'POST' });
       const c = counters.find((ct) => ct.id === selectedCounterId);
       if (c) setActiveCounter({ ...c, status: 'OPEN' });
+      showSuccess('Loket berhasil dibuka');
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal membuka loket');
     }
   };
 
@@ -107,13 +124,22 @@ export const StaffCounterPage: React.FC = () => {
       const c = counters.find((ct) => ct.id === selectedCounterId);
       if (c) setActiveCounter({ ...c, status: 'CLOSED' });
       setCurrentTicket(null);
+      showInfo('Loket berhasil ditutup');
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal menutup loket');
     }
   };
 
   const handleCallNext = async () => {
-    if (!selectedCounterId) return;
+    if (!selectedCounterId || selectedCounterId === 0) {
+      showWarning('Silakan pilih Loket terlebih dahulu atau buat Loket baru di menu Branches & Counters');
+      return;
+    }
+    if (activeCounter?.status !== 'OPEN' && activeCounter?.status !== 'BUSY') {
+      showWarning('Buka Loket terlebih dahulu dengan menekan tombol "Open Counter"');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetchApi<QueueTicket>(`/tickets/counters/${selectedCounterId}/next`, {
@@ -121,19 +147,22 @@ export const StaffCounterPage: React.FC = () => {
       });
       setCurrentTicket(res.data);
       fetchWaitingQueue();
+      showSuccess(`Memanggil Antrean ${res.data.ticket_number}`);
     } catch (err: any) {
-      alert(err.message || 'No waiting tickets available');
+      showError(err.message || 'Tidak ada tiket antrean yang menunggu');
     } finally {
       setLoading(false);
     }
   };
 
+
   const handleRecall = async () => {
     if (!currentTicket) return;
     try {
       await fetchApi(`/tickets/${currentTicket.id}/recall`, { method: 'POST' });
+      showInfo(`Memanggil Ulang Tiket ${currentTicket.ticket_number}`);
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal memanggil ulang');
     }
   };
 
@@ -142,8 +171,9 @@ export const StaffCounterPage: React.FC = () => {
     try {
       const res = await fetchApi<QueueTicket>(`/tickets/${currentTicket.id}/start`, { method: 'POST' });
       setCurrentTicket(res.data);
+      showSuccess(`Memulai pelayanan untuk ${res.data.ticket_number}`);
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal melayani tiket');
     }
   };
 
@@ -151,10 +181,11 @@ export const StaffCounterPage: React.FC = () => {
     if (!currentTicket) return;
     try {
       await fetchApi(`/tickets/${currentTicket.id}/complete`, { method: 'POST' });
+      showSuccess(`Tiket ${currentTicket.ticket_number} Selesai Dilayani`);
       setCurrentTicket(null);
       fetchWaitingQueue();
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal menyelesaikan pelayanan');
     }
   };
 
@@ -162,10 +193,11 @@ export const StaffCounterPage: React.FC = () => {
     if (!currentTicket) return;
     try {
       await fetchApi(`/tickets/${currentTicket.id}/skip`, { method: 'POST' });
+      showInfo(`Tiket ${currentTicket.ticket_number} Dilewati`);
       setCurrentTicket(null);
       fetchWaitingQueue();
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal melewati tiket');
     }
   };
 
@@ -173,10 +205,11 @@ export const StaffCounterPage: React.FC = () => {
     if (!currentTicket) return;
     try {
       await fetchApi(`/tickets/${currentTicket.id}/no-show`, { method: 'POST' });
+      showInfo(`Tiket ${currentTicket.ticket_number} Ditandai Tidak Hadir`);
       setCurrentTicket(null);
       fetchWaitingQueue();
     } catch (err: any) {
-      alert(err.message);
+      showError(err.message || 'Gagal memproses tiket');
     }
   };
 
@@ -194,35 +227,50 @@ export const StaffCounterPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 w-full md:w-auto">
-          <select
-            value={selectedBranchId}
-            onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-            className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-blue-500"
-          >
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          {/* Branch Selector Dropdown */}
+          <div className="relative w-full sm:w-52">
+            <Building2 className="w-4 h-4 text-blue-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+            <select
+              value={selectedBranchId}
+              onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+              className="w-full appearance-none bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 focus:border-blue-500 rounded-xl pl-9 pr-9 py-2.5 text-xs text-white font-bold transition shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              {branches.map((b) => (
+                <option key={b.id} value={b.id} className="bg-slate-900 text-white font-semibold py-1">
+                  {b.name} ({b.code})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+          </div>
 
-          <select
-            value={selectedCounterId}
-            onChange={(e) => {
-              const cid = Number(e.target.value);
-              setSelectedCounterId(cid);
-              const ct = counters.find((c) => c.id === cid);
-              setActiveCounter(ct || null);
-            }}
-            className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-blue-500"
-          >
-            {counters.map((c) => (
-              <option key={c.id} value={c.id}>
-                Counter {c.counter_number} — {c.name} ({c.status})
-              </option>
-            ))}
-          </select>
+          {/* Counter Selector Dropdown */}
+          <div className="relative w-full sm:w-64">
+            <Monitor className="w-4 h-4 text-indigo-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+            <select
+              value={selectedCounterId}
+              onChange={(e) => {
+                const cid = Number(e.target.value);
+                setSelectedCounterId(cid);
+                const ct = counters.find((c) => c.id === cid);
+                setActiveCounter(ct || null);
+              }}
+              className="w-full appearance-none bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 focus:border-indigo-500 rounded-xl pl-9 pr-9 py-2.5 text-xs text-white font-bold transition shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {counters.length === 0 ? (
+                <option value={0} className="bg-slate-900 text-amber-400 font-semibold">-- Belum Ada Loket --</option>
+              ) : (
+                counters.map((c) => (
+                  <option key={c.id} value={c.id} className="bg-slate-900 text-white font-semibold py-1">
+                    Loket {c.counter_number} — {c.name} ({c.status})
+                  </option>
+                ))
+              )}
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+          </div>
+
 
           {activeCounter?.status === 'OPEN' || activeCounter?.status === 'BUSY' ? (
             <button
@@ -243,6 +291,19 @@ export const StaffCounterPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {counters.length === 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between text-amber-300 text-xs shadow-lg">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span>Cabang ini belum memiliki Loket Pelayanan. Silakan buat Loket di menu <strong>Branches & Counters</strong> agar dapat melakukan panggilan antrean.</span>
+          </div>
+          <Link to="/branches" className="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded-xl hover:bg-amber-400 transition flex-shrink-0">
+            Buat Loket Sekarang
+          </Link>
+        </div>
+      )}
+
 
       {/* Main Counter Console */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

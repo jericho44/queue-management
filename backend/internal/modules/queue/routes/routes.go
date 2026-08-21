@@ -17,7 +17,9 @@ func RegisterQueueRoutes(router fiber.Router, queueController *controller.QueueC
 
 	tickets.Post("/", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER", "RECEPTIONIST"), queueController.IssueTicket)
 	tickets.Get("/", queueController.ListBranchTickets)
+	tickets.Get("/waiting", queueController.ListWaitingTickets)
 	tickets.Post("/counters/:counterId/next", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"), queueController.CallNext)
+
 	tickets.Post("/:id/recall", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"), queueController.RecallTicket)
 	tickets.Post("/:id/start", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"), queueController.StartServing)
 	tickets.Post("/:id/complete", middleware.RequireRoles("SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"), queueController.CompleteTicket)

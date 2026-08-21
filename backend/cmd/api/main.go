@@ -29,7 +29,13 @@ import (
 	authRoutes "queue-management-tenant/backend/internal/modules/auth/routes"
 	authSvc "queue-management-tenant/backend/internal/modules/auth/service"
 
+	billingCtrl "queue-management-tenant/backend/internal/modules/billing/controller"
+	billingRepo "queue-management-tenant/backend/internal/modules/billing/repository"
+	billingRoutes "queue-management-tenant/backend/internal/modules/billing/routes"
+	billingSvc "queue-management-tenant/backend/internal/modules/billing/service"
+
 	branchCtrl "queue-management-tenant/backend/internal/modules/branch/controller"
+
 	branchRepo "queue-management-tenant/backend/internal/modules/branch/repository"
 	branchRoutes "queue-management-tenant/backend/internal/modules/branch/routes"
 	branchSvc "queue-management-tenant/backend/internal/modules/branch/service"
@@ -100,14 +106,16 @@ func main() {
 	qRepo := queueRepo.NewQueueRepository(db)
 	rRepo := reportRepo.NewReportRepository(db)
 	aRepo := auditRepo.NewAuditRepository(db)
+	bilRepo := billingRepo.NewBillingRepository(db)
 
 	// Module Services
 	aService := authSvc.NewAuthService(db, oRepo, uRepo, jwtSvc)
 	bService := branchSvc.NewBranchService(bRepo, oRepo)
 	sService := serviceSvc.NewServiceManagementService(sRepo)
 	cService := counterSvc.NewCounterService(cRepo, oRepo)
-	qService := queueSvc.NewQueueService(qRepo, sRepo, cRepo, wsHub)
+	qService := queueSvc.NewQueueService(qRepo, sRepo, cRepo, bilRepo, wsHub)
 	rService := reportSvc.NewReportService(rRepo)
+	bilService := billingSvc.NewBillingService(bilRepo, oRepo)
 
 	// Module Controllers
 	aController := authCtrl.NewAuthController(aService)
@@ -117,6 +125,7 @@ func main() {
 	qController := queueCtrl.NewQueueController(qService)
 	rController := reportCtrl.NewReportController(rService)
 	auditController := auditCtrl.NewAuditController(aRepo)
+	bilController := billingCtrl.NewBillingController(bilService)
 
 	// Fiber App Initialization
 	app := fiber.New(fiber.Config{
@@ -166,6 +175,8 @@ func main() {
 	queueRoutes.RegisterQueueRoutes(api, qController, jwtSvc)
 	reportRoutes.RegisterReportRoutes(api, rController, jwtSvc)
 	auditRoutes.RegisterAuditRoutes(api, auditController, jwtSvc)
+	billingRoutes.RegisterBillingRoutes(api, bilController, jwtSvc)
+
 
 	port := fmt.Sprintf(":%s", cfg.AppPort)
 	log.Printf("Starting Queue Management System API server on port %s", port)

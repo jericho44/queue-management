@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+
 
 	"queue-management-tenant/backend/internal/modules/branch/dto"
 	"queue-management-tenant/backend/internal/modules/branch/entity"
@@ -42,8 +42,9 @@ func (s *BranchService) CreateBranch(ctx context.Context, orgID int64, req dto.C
 		OrganizationID: orgID,
 		Name:           req.Name,
 		Code:           req.Code,
-		Address:        sql.NullString{String: req.Address, Valid: req.Address != ""},
-		Phone:          sql.NullString{String: req.Phone, Valid: req.Phone != ""},
+		Address:        req.Address,
+		Phone:          req.Phone,
+
 		Status:         "ACTIVE",
 		KioskEnabled:   true,
 		KioskMode:      "DUAL",
@@ -67,9 +68,10 @@ func (s *BranchService) GetBranch(ctx context.Context, orgID, id int64) (*entity
 	return s.branchRepo.GetByID(ctx, orgID, id)
 }
 
-func (s *BranchService) GetBranchPublic(ctx context.Context, id int64) (*entity.Branch, error) {
-	return s.branchRepo.GetByIDPublic(ctx, id)
+func (s *BranchService) GetBranchPublic(ctx context.Context, identifier string) (*entity.Branch, error) {
+	return s.branchRepo.GetByIDPublic(ctx, identifier)
 }
+
 
 func (s *BranchService) UpdateKioskSettings(ctx context.Context, orgID, branchID int64, req dto.UpdateKioskSettingsRequest) (*entity.Branch, error) {
 	branch, err := s.branchRepo.GetByID(ctx, orgID, branchID)

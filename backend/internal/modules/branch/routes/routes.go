@@ -8,7 +8,8 @@ import (
 )
 
 func RegisterBranchRoutes(router fiber.Router, branchController *controller.BranchController, jwtSvc *jwt.JWTService) {
-	router.Get("/public/branches/:id", branchController.GetBranchPublic)
+	router.Get("/public/branches/:identifier", branchController.GetBranchPublic)
+
 
 	branches := router.Group("/branches", middleware.AuthMiddleware(jwtSvc))
 
