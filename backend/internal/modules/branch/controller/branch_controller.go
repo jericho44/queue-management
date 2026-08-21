@@ -17,8 +17,28 @@ func NewBranchController(branchService *service.BranchService) *BranchController
 	return &BranchController{branchService: branchService}
 }
 
+func getOrgID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("organization_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
 func (h *BranchController) CreateBranch(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	var req dto.CreateBranchRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -34,7 +54,10 @@ func (h *BranchController) CreateBranch(c *fiber.Ctx) error {
 }
 
 func (h *BranchController) ListBranches(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	branches, err := h.branchService.ListBranches(c.Context(), orgID)
 	if err != nil {
@@ -45,7 +68,11 @@ func (h *BranchController) ListBranches(c *fiber.Ctx) error {
 }
 
 func (h *BranchController) GetBranch(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid branch ID", nil)
@@ -73,9 +100,12 @@ func (h *BranchController) GetBranchPublic(c *fiber.Ctx) error {
 	return response.Success(c, fiber.StatusOK, "Branch details retrieved", branch)
 }
 
-
 func (h *BranchController) UpdateKioskSettings(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid branch ID", nil)
@@ -93,4 +123,3 @@ func (h *BranchController) UpdateKioskSettings(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Branch kiosk settings updated", branch)
 }
-

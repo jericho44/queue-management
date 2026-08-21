@@ -17,8 +17,45 @@ func NewQueueController(queueService *service.QueueService) *QueueController {
 	return &QueueController{queueService: queueService}
 }
 
+func getOrgID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("organization_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
+func getUserID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("user_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
 func (h *QueueController) IssueTicket(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	var req dto.IssueTicketRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -47,10 +84,13 @@ func (h *QueueController) IssuePublicTicket(c *fiber.Ctx) error {
 	return response.Success(c, fiber.StatusCreated, "Ticket issued successfully", ticket)
 }
 
-
 func (h *QueueController) CallNext(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
-	staffID := c.Locals("user_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+	staffID, _ := getUserID(c)
+
 	counterID, err := strconv.ParseInt(c.Params("counterId"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid counter ID", nil)
@@ -65,7 +105,11 @@ func (h *QueueController) CallNext(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) RecallTicket(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid ticket ID", nil)
@@ -80,8 +124,12 @@ func (h *QueueController) RecallTicket(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) StartServing(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
-	staffID := c.Locals("user_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+	staffID, _ := getUserID(c)
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid ticket ID", nil)
@@ -96,8 +144,12 @@ func (h *QueueController) StartServing(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) CompleteTicket(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
-	staffID := c.Locals("user_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+	staffID, _ := getUserID(c)
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid ticket ID", nil)
@@ -112,8 +164,12 @@ func (h *QueueController) CompleteTicket(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) SkipTicket(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
-	staffID := c.Locals("user_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+	staffID, _ := getUserID(c)
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid ticket ID", nil)
@@ -128,8 +184,12 @@ func (h *QueueController) SkipTicket(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) NoShowTicket(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
-	staffID := c.Locals("user_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+	staffID, _ := getUserID(c)
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid ticket ID", nil)
@@ -155,7 +215,11 @@ func (h *QueueController) GetPublicTicket(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) ListBranchTickets(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	branchID, err := strconv.ParseInt(c.Query("branch_id"), 10, 64)
 	if err != nil || branchID <= 0 {
 		return response.Error(c, fiber.StatusBadRequest, "Branch ID required", nil)
@@ -171,7 +235,11 @@ func (h *QueueController) ListBranchTickets(c *fiber.Ctx) error {
 }
 
 func (h *QueueController) ListWaitingTickets(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	branchID, err := strconv.ParseInt(c.Query("branch_id"), 10, 64)
 	if err != nil || branchID <= 0 {
 		return response.Error(c, fiber.StatusBadRequest, "Branch ID required", nil)
@@ -184,4 +252,3 @@ func (h *QueueController) ListWaitingTickets(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Waiting queue list retrieved", tickets)
 }
-

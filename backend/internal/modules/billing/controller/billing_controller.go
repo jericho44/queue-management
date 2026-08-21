@@ -17,8 +17,28 @@ func NewBillingController(billingService *service.BillingService) *BillingContro
 	return &BillingController{billingService: billingService}
 }
 
+func getOrgID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("organization_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
 func (h *BillingController) GetCurrentUsage(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	usage, err := h.billingService.GetCurrentUsage(c.Context(), orgID)
 	if err != nil {
@@ -29,7 +49,10 @@ func (h *BillingController) GetCurrentUsage(c *fiber.Ctx) error {
 }
 
 func (h *BillingController) ListTenantInvoices(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	invoices, err := h.billingService.ListTenantInvoices(c.Context(), orgID)
 	if err != nil {
@@ -40,7 +63,11 @@ func (h *BillingController) ListTenantInvoices(c *fiber.Ctx) error {
 }
 
 func (h *BillingController) CreateSnapToken(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	invoiceID, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid invoice ID", nil)

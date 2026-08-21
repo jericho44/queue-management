@@ -17,8 +17,28 @@ func NewServiceController(svcManagement *service.ServiceManagementService) *Serv
 	return &ServiceController{svcManagement: svcManagement}
 }
 
+func getOrgID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("organization_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
 func (h *ServiceController) CreateService(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	var req dto.CreateServiceRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -34,7 +54,11 @@ func (h *ServiceController) CreateService(c *fiber.Ctx) error {
 }
 
 func (h *ServiceController) ListServicesByBranch(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	branchID, err := strconv.ParseInt(c.Query("branch_id"), 10, 64)
 	if err != nil || branchID <= 0 {
 		return response.Error(c, fiber.StatusBadRequest, "Branch ID required", nil)
@@ -61,5 +85,3 @@ func (h *ServiceController) ListServicesByBranchPublic(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Service list retrieved", services)
 }
-
-

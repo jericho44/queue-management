@@ -17,8 +17,45 @@ func NewCounterController(counterService *service.CounterService) *CounterContro
 	return &CounterController{counterService: counterService}
 }
 
+func getOrgID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("organization_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
+func getUserID(c *fiber.Ctx) (int64, bool) {
+	val := c.Locals("user_id")
+	if val == nil {
+		return 0, false
+	}
+	if id, ok := val.(int64); ok {
+		return id, true
+	}
+	if f, ok := val.(float64); ok {
+		return int64(f), true
+	}
+	if i, ok := val.(int); ok {
+		return int64(i), true
+	}
+	return 0, false
+}
+
 func (h *CounterController) CreateCounter(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
 
 	var req dto.CreateCounterRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -34,7 +71,11 @@ func (h *CounterController) CreateCounter(c *fiber.Ctx) error {
 }
 
 func (h *CounterController) ListCountersByBranch(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	branchID, err := strconv.ParseInt(c.Query("branch_id"), 10, 64)
 	if err != nil || branchID <= 0 {
 		return response.Error(c, fiber.StatusBadRequest, "Branch ID required", nil)
@@ -49,8 +90,12 @@ func (h *CounterController) ListCountersByBranch(c *fiber.Ctx) error {
 }
 
 func (h *CounterController) OpenCounter(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
-	staffID := c.Locals("user_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+	staffID, _ := getUserID(c)
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid counter ID", nil)
@@ -64,7 +109,11 @@ func (h *CounterController) OpenCounter(c *fiber.Ctx) error {
 }
 
 func (h *CounterController) CloseCounter(c *fiber.Ctx) error {
-	orgID := c.Locals("organization_id").(int64)
+	orgID, ok := getOrgID(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Organization context missing", nil)
+	}
+
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid counter ID", nil)

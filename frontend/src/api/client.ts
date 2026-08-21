@@ -22,10 +22,20 @@ export async function fetchApi<T>(
     headers,
   });
 
-  const json: APIResponse<T> = await response.json();
+  const rawText = await response.text();
+  let json: APIResponse<T>;
+
+  try {
+    json = JSON.parse(rawText);
+  } catch (parseErr) {
+    if (!response.ok) {
+      throw new Error(`Server returned HTTP ${response.status} (${response.statusText || 'Error'}). API connection failed.`);
+    }
+    throw new Error('Respon dari server bukan format JSON yang valid.');
+  }
 
   if (!response.ok || !json.success) {
-    throw new Error(json.message || 'An error occurred while communicating with the server');
+    throw new Error(json.message || 'Terjadi kesalahan saat berkomunikasi dengan server');
   }
 
   return json;
