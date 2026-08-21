@@ -1,0 +1,786 @@
+{
+	"info": {
+		"_postman_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Queue Management System (QMS) SaaS Multi-Tenant API",
+		"description": "Dokumentasi Lengkap REST API Multi-Tenant Queue Management System (QMS) SaaS dengan arsitektur Go Fiber, PostgreSQL Concurrency-Safe (FOR UPDATE SKIP LOCKED), Midtrans Payment Gateway, & Terminal Kiosk.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔑 1. Authentication & Tenant",
+			"item": [
+				{
+					"name": "Register New Tenant & Owner",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"org_name\": \"Klinik Sehat Sejahtera\",\n  \"org_code\": \"KSS\",\n  \"full_name\": \"Dr. Rina Wijaya\",\n  \"email\": \"rina@sehatsejahtera.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Mendaftarkan organisasi/tenant baru beserta akun Owner utama."
+					},
+					"response": []
+				},
+				{
+					"name": "Login User / Staff",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success && jsonData.data.token) {",
+									"    pm.collectionVariables.set('token', jsonData.data.token);",
+									"    pm.collectionVariables.set('orgId', jsonData.data.user.organization_id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"owner@healthcare.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login untuk mengautentikasi pengguna dan mendapatkan JWT Access Token."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📍 2. Branches Management",
+			"item": [
+				{
+					"name": "Create Branch Location",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Sudirman Main Branch\",\n  \"code\": \"SDR\",\n  \"address\": \"Jl. Jend. Sudirman No. 45, Jakarta Selatan\",\n  \"phone\": \"021-5550199\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/branches",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"branches"
+							]
+						},
+						"description": "Menambahkan lokasi cabang baru bagi organisasi."
+					},
+					"response": []
+				},
+				{
+					"name": "List Tenant Branches",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/branches",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"branches"
+							]
+						},
+						"description": "Mengambil seluruh cabang milik organisasi terautentikasi."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Kiosk & Printer Settings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"kiosk_enabled\": true,\n  \"kiosk_mode\": \"DUAL\",\n  \"paper_size\": \"58mm\",\n  \"receipt_header\": \"Selamat Datang di Klinik Sehat Sejahtera - Cabang Sudirman\",\n  \"receipt_footer\": \"Semoga lekas sembuh! Harap simpan struk ini hingga dipanggil.\",\n  \"auto_print\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/branches/1/kiosk-settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"branches",
+								"1",
+								"kiosk-settings"
+							]
+						},
+						"description": "Mengatur konfigurasi terminal Kiosk dan printer thermal untuk cabang tertentu."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Public Branch Info (by Code / Slug / ID)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/branches/sdr",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"branches",
+								"sdr"
+							]
+						},
+						"description": "Endpoint publik tanpa otentikasi untuk mengambil informasi cabang pada layar Touchscreen Kiosk."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🛠️ 3. Service Categories",
+			"item": [
+				{
+					"name": "Create Service Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"branch_id\": 1,\n  \"name\": \"Poli Umum\",\n  \"code\": \"POLI_UMUM\",\n  \"prefix\": \"A\",\n  \"avg_service_time_sec\": 480,\n  \"priority_weight\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/services",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"services"
+							]
+						},
+						"description": "Membuat kategori layanan/poli baru pada cabang tertentu."
+					},
+					"response": []
+				},
+				{
+					"name": "List Services by Branch (Public Kiosk)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/services?branch_id=sdr",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"services"
+							],
+							"query": [
+								{
+									"key": "branch_id",
+									"value": "sdr"
+								}
+							]
+						},
+						"description": "Endpoint publik untuk menampilkan tombol pilihan layanan pada layar Kiosk."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💻 4. Counters Management",
+			"item": [
+				{
+					"name": "Create Counter Station",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"branch_id\": 1,\n  \"counter_number\": 1,\n  \"name\": \"Loket 01 (General)\",\n  \"service_ids\": [1, 2]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/counters",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"counters"
+							]
+						},
+						"description": "Membuat Loket Pelayanan baru dan menugaskan jenis layanan yang dapat dilayani."
+					},
+					"response": []
+				},
+				{
+					"name": "List Counters by Branch",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/counters?branch_id=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"counters"
+							],
+							"query": [
+								{
+									"key": "branch_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Mengambil daftar loket pelayanan pada cabang tertentu."
+					},
+					"response": []
+				},
+				{
+					"name": "Open Counter Station",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/counters/1/open",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"counters",
+								"1",
+								"open"
+							]
+						},
+						"description": "Membuka status loket menjadi OPEN oleh staff yang bertugas."
+					},
+					"response": []
+				},
+				{
+					"name": "Close Counter Station",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/counters/1/close",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"counters",
+								"1",
+								"close"
+							]
+						},
+						"description": "Menutup status loket menjadi CLOSED."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🎟️ 5. Queue & Ticket Operations",
+			"item": [
+				{
+					"name": "Public Touchscreen Kiosk Ticket Issue",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"branch_id\": 1,\n  \"service_id\": 1,\n  \"priority\": \"NORMAL\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"tickets"
+							]
+						},
+						"description": "Penerbitan tiket antrean secara mandiri oleh pengunjung pada terminal Touchscreen Kiosk. Menggunakan transaksi PostgreSQL FOR UPDATE agar bebas collision."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Public Ticket Status (Smartphone Live Tracking)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/tickets/{{ticketToken}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"tickets",
+								"{{ticketToken}}"
+							]
+						},
+						"description": "Endpoint pelacakan posisi antrean real-time pada smartphone pasien setelah melakukan scan QR Code Paperless."
+					},
+					"response": []
+				},
+				{
+					"name": "Call Next Ticket (Atomically FOR UPDATE SKIP LOCKED)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/tickets/counters/1/next",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tickets",
+								"counters",
+								"1",
+								"next"
+							]
+						},
+						"description": "Memanggil antrean berikutnya secara atomik untuk loket terpilih berdasarkan bobot prioritas dan urutan sekuensial."
+					},
+					"response": []
+				},
+				{
+					"name": "List Waiting Tickets",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/tickets/waiting?branch_id=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tickets",
+								"waiting"
+							],
+							"query": [
+								{
+									"key": "branch_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Mengambil seluruh tiket yang ber-status WAITING pada cabang."
+					},
+					"response": []
+				},
+				{
+					"name": "Start Serving Customer",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/tickets/1/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tickets",
+								"1",
+								"start"
+							]
+						},
+						"description": "Mengubah status tiket menjadi SERVING saat pasien mendatangi meja loket."
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Ticket Serving",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/tickets/1/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tickets",
+								"1",
+								"complete"
+							]
+						},
+						"description": "Menandai pelayanan tiket telah selesai (COMPLETED)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💳 6. Billing & Midtrans Gateway",
+			"item": [
+				{
+					"name": "Get Tenant Usage Meter",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/billing/usage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"billing",
+								"usage"
+							]
+						},
+						"description": "Melihat kuota penggunaan bulanan tiket antrean dan batas paket langganan SaaS."
+					},
+					"response": []
+				},
+				{
+					"name": "List Tenant Invoices",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/billing/invoices",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"billing",
+								"invoices"
+							]
+						},
+						"description": "Melihat daftar tagihan faktur langganan bulanan."
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Midtrans Payment Snap Token",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/billing/invoices/1/snap-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"billing",
+								"invoices",
+								"1",
+								"snap-token"
+							]
+						},
+						"description": "Menghasilkan Midtrans Snap Token & redirect URL untuk melakukan pembayaran faktur online via QRIS/VA/CC."
+					},
+					"response": []
+				},
+				{
+					"name": "Midtrans Payment Webhook Callback",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"transaction_time\": \"2026-08-21 15:50:00\",\n  \"transaction_status\": \"settlement\",\n  \"transaction_id\": \"TRX-MIDTRANS-9901\",\n  \"status_message\": \"Midtrans payment response\",\n  \"status_code\": \"200\",\n  \"signature_key\": \"dummy-signature\",\n  \"order_id\": \"INV-202608-0001\",\n  \"payment_type\": \"qris\",\n  \"gross_amount\": \"150000.00\",\n  \"fraud_status\": \"accept\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/billing/webhook/midtrans",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"billing",
+								"webhook",
+								"midtrans"
+							]
+						},
+						"description": "Endpoint callback dari Midtrans Gateway untuk memperbarui status transaksi faktur secara otomatis."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "orgId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "ticketToken",
+			"value": "pub-token-sample-123",
+			"type": "string"
+		}
+	]
+}
