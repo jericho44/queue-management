@@ -252,3 +252,22 @@ func (h *QueueController) ListWaitingTickets(c *fiber.Ctx) error {
 
 	return response.Success(c, fiber.StatusOK, "Waiting queue list retrieved", tickets)
 }
+
+func (h *QueueController) ListPublicTicketsByBranch(c *fiber.Ctx) error {
+	branchParam := c.Query("branch_id")
+	if branchParam == "" {
+		branchParam = c.Params("identifier")
+	}
+	if branchParam == "" {
+		return response.Error(c, fiber.StatusBadRequest, "Branch parameter required", nil)
+	}
+	status := c.Query("status")
+
+	tickets, err := h.queueService.ListPublicTicketsByBranch(c.Context(), branchParam, status)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Public queue list retrieved", tickets)
+}
+

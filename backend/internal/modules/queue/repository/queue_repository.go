@@ -182,23 +182,30 @@ func (r *QueueRepository) UpdateTicketStatus(ctx context.Context, ticketID int64
 
 	now := time.Now().UTC()
 
-	var updateQuery string
+	var row *sql.Row
+	returningCols := `RETURNING id, uuid, organization_id, branch_id, service_id, ticket_number, sequence_number, queue_date, priority, status, public_token, called_at, serving_started_at, completed_at, cancelled_at, created_at, updated_at`
+
 	switch toStatus {
 	case "SERVING":
-		updateQuery = `UPDATE queue_tickets SET status = $1, serving_started_at = $2, updated_at = $2 WHERE id = $3 AND status = $4 RETURNING id, uuid, organization_id, branch_id, service_id, ticket_number, sequence_number, queue_date, priority, status, public_token, called_at, serving_started_at, created_at, updated_at`
+		query := fmt.Sprintf(`UPDATE queue_tickets SET status = $1, serving_started_at = $2, updated_at = $2 WHERE id = $3 AND (status = $4 OR $4 = '') %s`, returningCols)
+		row = tx.QueryRowContext(ctx, query, toStatus, now, ticketID, fromStatus)
 	case "COMPLETED":
-		updateQuery = `UPDATE queue_tickets SET status = $1, completed_at = $2, updated_at = $2 WHERE id = $3 AND status IN ('CALLED', 'SERVING') RETURNING id, uuid, organization_id, branch_id, service_id, ticket_number, sequence_number, queue_date, priority, status, public_token, called_at, serving_started_at, completed_at, created_at, updated_at`
+		query := fmt.Sprintf(`UPDATE queue_tickets SET status = $1, completed_at = $2, updated_at = $2 WHERE id = $3 AND status IN ('CALLED', 'SERVING', 'WAITING') %s`, returningCols)
+		row = tx.QueryRowContext(ctx, query, toStatus, now, ticketID)
 	case "SKIPPED", "NO_SHOW", "CANCELLED":
-		updateQuery = `UPDATE queue_tickets SET status = $1, cancelled_at = $2, updated_at = $2 WHERE id = $3 RETURNING id, uuid, organization_id, branch_id, service_id, ticket_number, sequence_number, queue_date, priority, status, public_token, called_at, serving_started_at, completed_at, cancelled_at, created_at, updated_at`
+		query := fmt.Sprintf(`UPDATE queue_tickets SET status = $1, cancelled_at = $2, updated_at = $2 WHERE id = $3 %s`, returningCols)
+		row = tx.QueryRowContext(ctx, query, toStatus, now, ticketID)
 	default:
-		updateQuery = `UPDATE queue_tickets SET status = $1, updated_at = $2 WHERE id = $3 RETURNING id, uuid, organization_id, branch_id, service_id, ticket_number, sequence_number, queue_date, priority, status, public_token, created_at, updated_at`
+		query := fmt.Sprintf(`UPDATE queue_tickets SET status = $1, updated_at = $2 WHERE id = $3 %s`, returningCols)
+		row = tx.QueryRowContext(ctx, query, toStatus, now, ticketID)
 	}
 
 	ticket := &entity.QueueTicket{}
-	err = tx.QueryRowContext(ctx, updateQuery, toStatus, now, ticketID, fromStatus).Scan(
+	err = row.Scan(
 		&ticket.ID, &ticket.UUID, &ticket.OrganizationID, &ticket.BranchID, &ticket.ServiceID,
 		&ticket.TicketNumber, &ticket.SequenceNumber, &ticket.QueueDate, &ticket.Priority,
-		&ticket.Status, &ticket.PublicToken, &ticket.CreatedAt, &ticket.UpdatedAt,
+		&ticket.Status, &ticket.PublicToken, &ticket.CalledAt, &ticket.ServingStartedAt,
+		&ticket.CompletedAt, &ticket.CancelledAt, &ticket.CreatedAt, &ticket.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ticket state transition or ticket not found: %w", err)
@@ -216,6 +223,7 @@ func (r *QueueRepository) UpdateTicketStatus(ctx context.Context, ticketID int64
 
 	return ticket, nil
 }
+
 
 func (r *QueueRepository) GetByPublicToken(ctx context.Context, tokenUUID string) (*entity.QueueTicket, error) {
 	query := `
@@ -308,3 +316,45 @@ func (r *QueueRepository) ListTickets(ctx context.Context, orgID, branchID int64
 	}
 	return tickets, nil
 }
+
+func (r *QueueRepository) ListPublicTicketsByBranch(ctx context.Context, branchIdentifier string, status string) ([]entity.QueueTicket, error) {
+	today := time.Now().UTC().Format("2006-01-02")
+	query := `
+		SELECT t.id, t.uuid, t.organization_id, t.branch_id, b.name, t.service_id, s.name, s.prefix, t.ticket_number, t.sequence_number, t.queue_date, t.priority, t.status, t.public_token, COALESCE(c.counter_number, ''), COALESCE(u.full_name, ''), t.called_at, t.serving_started_at, t.completed_at, t.estimated_wait_seconds, t.created_at, t.updated_at
+		FROM queue_tickets t
+		JOIN branches b ON t.branch_id = b.id
+		JOIN services s ON t.service_id = s.id
+		LEFT JOIN counters c ON t.counter_id = c.id
+		LEFT JOIN users u ON t.staff_id = u.id
+		WHERE (CAST(b.id AS TEXT) = $1 OR LOWER(b.code) = LOWER($1) OR LOWER(REPLACE(b.name, ' ', '-')) = LOWER($1))
+		  AND t.queue_date = $2 AND t.deleted_at IS NULL
+	`
+	args := []interface{}{branchIdentifier, today}
+	if status != "" {
+		query += " AND t.status = $3"
+		args = append(args, status)
+	}
+
+	query += " ORDER BY t.updated_at DESC LIMIT 50"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tickets []entity.QueueTicket
+	for rows.Next() {
+		var t entity.QueueTicket
+		if err := rows.Scan(
+			&t.ID, &t.UUID, &t.OrganizationID, &t.BranchID, &t.BranchName, &t.ServiceID, &t.ServiceName, &t.ServicePrefix,
+			&t.TicketNumber, &t.SequenceNumber, &t.QueueDate, &t.Priority, &t.Status, &t.PublicToken, &t.CounterNumber, &t.StaffName,
+			&t.CalledAt, &t.ServingStartedAt, &t.CompletedAt, &t.EstimatedWaitSeconds, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		tickets = append(tickets, t)
+	}
+	return tickets, nil
+}
+

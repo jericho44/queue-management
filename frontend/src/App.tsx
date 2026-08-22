@@ -39,6 +39,8 @@ export const App: React.FC = () => {
             <Route path="/ticket/:publicToken" element={<PublicTicketPage />} />
             <Route path="/kiosk/:branchId" element={<KioskPage />} />
             <Route path="/display" element={<PublicDisplayPage />} />
+            <Route path="/display/:branchIdentifier" element={<PublicDisplayPage />} />
+
 
             {/* Protected Dashboard Routes */}
             <Route path="/" element={<DashboardLayout />}>

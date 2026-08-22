@@ -1,18 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { QueueTicket, Branch } from '../../types';
 import { fetchApi } from '../../api/client';
 import { Volume2, Monitor, Building2, Clock, Sparkles } from 'lucide-react';
 
 export const PublicDisplayPage: React.FC = () => {
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<number>(0);
+  const { branchIdentifier } = useParams<{ branchIdentifier?: string }>();
+  const [activeBranch, setActiveBranch] = useState<Branch | null>(null);
   const [calledTickets, setCalledTickets] = useState<QueueTicket[]>([]);
   const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>([]);
   const [latestCall, setLatestCall] = useState<QueueTicket | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
 
+  const targetIdentifier = branchIdentifier || 'sdr';
+
   useEffect(() => {
-    fetchBranches();
     const clockTimer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString());
     }, 1000);
@@ -20,32 +22,45 @@ export const PublicDisplayPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedBranchId > 0) {
-      loadInitialDisplayData(selectedBranchId);
-      setupWebSocket(selectedBranchId);
-    }
-  }, [selectedBranchId]);
+    if (!targetIdentifier) return;
 
-  const fetchBranches = async () => {
+    loadBranchData(targetIdentifier);
+    loadDisplayTickets(targetIdentifier);
+
+    const wsCleanup = setupWebSocket(targetIdentifier);
+    const pollTimer = setInterval(() => {
+      loadDisplayTickets(targetIdentifier);
+    }, 3000);
+
+    return () => {
+      if (wsCleanup) wsCleanup();
+      clearInterval(pollTimer);
+    };
+  }, [targetIdentifier]);
+
+
+  const loadBranchData = async (bIdentifier: string) => {
     try {
-      const res = await fetchApi<Branch[]>('/branches');
-      if (res.data && res.data.length > 0) {
-        setBranches(res.data);
-        setSelectedBranchId(res.data[0].id);
-      }
+      const res = await fetchApi<Branch>(`/public/branches/${bIdentifier}`);
+      setActiveBranch(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const loadInitialDisplayData = async (bId: number) => {
+  const loadDisplayTickets = async (bIdentifier: string) => {
     try {
-      const calledRes = await fetchApi<QueueTicket[]>(`/tickets?branch_id=${bId}&status=CALLED`);
-      const waitingRes = await fetchApi<QueueTicket[]>(`/tickets?branch_id=${bId}&status=WAITING`);
-      setCalledTickets(calledRes.data || []);
-      setWaitingTickets(waitingRes.data || []);
-      if (calledRes.data && calledRes.data.length > 0) {
-        setLatestCall(calledRes.data[0]);
+      const calledRes = await fetchApi<QueueTicket[]>(`/public/display?branch_id=${bIdentifier}&status=CALLED`);
+      const waitingRes = await fetchApi<QueueTicket[]>(`/public/display?branch_id=${bIdentifier}&status=WAITING`);
+      const calledList = calledRes.data || [];
+      const waitingList = waitingRes.data || [];
+
+      setCalledTickets(calledList);
+      setWaitingTickets(waitingList);
+      if (calledList.length > 0) {
+        setLatestCall(calledList[0]);
+      } else {
+        setLatestCall(null);
       }
     } catch (err) {
       console.error(err);
@@ -77,9 +92,11 @@ export const PublicDisplayPage: React.FC = () => {
     }
   };
 
-  const setupWebSocket = (bId: number) => {
+  const setupWebSocket = (bIdentifier: string) => {
+    const orgId = activeBranch?.organization_id || 1;
+    const branchId = activeBranch?.id || 1;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?channel=org:1:branch:${bId}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws?channel=org:${orgId}:branch:${branchId}`;
 
     const ws = new WebSocket(wsUrl);
 
@@ -92,7 +109,7 @@ export const PublicDisplayPage: React.FC = () => {
           setCalledTickets((prev) => [ticket, ...prev.filter((t) => t.id !== ticket.id)].slice(0, 4));
           playChimeSound();
         }
-        loadInitialDisplayData(bId);
+        loadDisplayTickets(bIdentifier);
       } catch (e) {
         console.error('WS error', e);
       }
@@ -100,6 +117,8 @@ export const PublicDisplayPage: React.FC = () => {
 
     return () => ws.close();
   };
+
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col p-6 font-sans select-none overflow-hidden">
@@ -110,25 +129,13 @@ export const PublicDisplayPage: React.FC = () => {
             Q
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-white">PUBLIC QUEUE DISPLAY</h1>
-            <p className="text-xs text-blue-400 font-semibold tracking-wider uppercase">Live Realtime Feed</p>
+            <h1 className="text-2xl font-black tracking-tight text-white">{activeBranch?.name || 'PUBLIC QUEUE DISPLAY'}</h1>
+            <p className="text-xs text-blue-400 font-semibold tracking-wider uppercase">Live Realtime Feed {activeBranch?.code ? `• ${activeBranch.code}` : ''}</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-6">
-          {branches.length > 1 && (
-            <select
-              value={selectedBranchId}
-              onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white font-bold"
-            >
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          )}
+
 
           <div className="text-right">
             <div className="text-2xl font-black text-white font-mono tracking-tight">{currentTime}</div>

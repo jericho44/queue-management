@@ -233,3 +233,8 @@ func (s *QueueService) GetByPublicToken(ctx context.Context, tokenUUID string) (
 func (s *QueueService) ListBranchTickets(ctx context.Context, orgID, branchID int64, status string) ([]queueEntity.QueueTicket, error) {
 	return s.queueRepo.ListTickets(ctx, orgID, branchID, status, 50)
 }
+
+func (s *QueueService) ListPublicTicketsByBranch(ctx context.Context, branchIdentifier string, status string) ([]queueEntity.QueueTicket, error) {
+	return s.queueRepo.ListPublicTicketsByBranch(ctx, branchIdentifier, status)
+}
+

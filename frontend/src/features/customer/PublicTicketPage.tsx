@@ -11,11 +11,19 @@ export const PublicTicketPage: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (publicToken) {
-      fetchTicketStatus();
-      setupWS(publicToken);
-    }
+    if (!publicToken) return;
+
+    fetchTicketStatus();
+    const wsCleanup = setupWS(publicToken);
+    const pollTimer = setInterval(fetchTicketStatus, 3000);
+
+    return () => {
+      if (wsCleanup) wsCleanup();
+      clearInterval(pollTimer);
+    };
   }, [publicToken]);
+
+
 
   const fetchTicketStatus = async () => {
     try {
