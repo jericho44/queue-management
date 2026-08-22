@@ -86,12 +86,13 @@ Dokumen ini berisi panduan skenario pengujian dan penggunaan nyata (Real-World U
 ---
 
 ### 📍 Langkah 6: Tampilan Public Display Layar Utama Klinik
-1. Di ruang tunggu utama, TV Smart Display membuka alamat `http://localhost/display`.
+1. Di ruang tunggu utama cabang Sudirman, TV Smart Display membuka URL publik `http://localhost/display/sdr` (atau `http://localhost:5173/display/sdr`).
 2. Layar fullscreen menampilkan:
-   - Header Logo & Nama Klinik `Klinik Sehat Sejahtera`.
+   - Header Logo & Nama Cabang `Sudirman Main Branch (SDR)`.
    - Papan Informasi Loket Aktif (Loket 01 & Loket 02).
    - Daftar Antrean Sedang Dilayani & Antrean Menunggu berikutnya.
    - Efek Audio Chime Synthesizer setiap kali ada panggilan baru.
+
 
 ---
 
